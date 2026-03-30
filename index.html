@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QFII · ETF 量化评分系统</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600&family=JetBrains+Mono:wght@400;500&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0c0e12;
+  --surface: #13161c;
+  --surface2: #1a1e27;
+  --border: rgba(255,255,255,0.07);
+  --border2: rgba(255,255,255,0.13);
+  --gold: #c9a84c;
+  --gold2: #e8c97a;
+  --gold-dim: rgba(201,168,76,0.12);
+  --gold-dim2: rgba(201,168,76,0.22);
+  --text: #e8e6df;
+  --text2: #9b9890;
+  --text3: #5a5854;
+  --red: #e05252;
+  --red-dim: rgba(224,82,82,0.12);
+  --green: #4caf7d;
+  --green-dim: rgba(76,175,125,0.12);
+  --blue: #5b8fe8;
+  --blue-dim: rgba(91,143,232,0.12);
+  --amber: #d4883a;
+  --amber-dim: rgba(212,136,58,0.12);
+  --radius: 10px;
+  --radius-sm: 6px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', 'PingFang SC', sans-serif;
+  font-size: 13px;
+  min-height: 100vh;
+  line-height: 1.6;
+}
+
+/* ── Layout ── */
+.app {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 32px 20px 60px;
+}
+
+/* ── Header ── */
+.header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 32px;
+  padding-bottom: 20px;
+  border-bottom: 0.5px solid var(--border2);
+}
+.header-left h1 {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--gold2);
+  letter-spacing: .04em;
+  margin-bottom: 4px;
+}
+.header-left p {
+  font-size: 11px;
+  color: var(--text3);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.header-right {
+  display: flex;
+  gap: 8px;
+}
+.btn {
+  padding: 7px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all .15s;
+  font-family: inherit;
+  border: 0.5px solid var(--border2);
+  background: var(--surface);
+  color: var(--text2);
+}
+.btn:hover { background: var(--surface2); color: var(--text); }
+.btn-gold {
+  background: var(--gold-dim);
+  border-color: var(--gold);
+  color: var(--gold);
+}
+.btn-gold:hover { background: var(--gold-dim2); }
+.btn-danger {
+  background: var(--red-dim);
+  border-color: var(--red);
+  color: var(--red);
+}
+
+/* ── Two-col layout ── */
+.layout { display: grid; grid-template-columns: 1fr 340px; gap: 16px; align-items: start; }
+@media (max-width: 720px) { .layout { grid-template-columns: 1fr; } }
+
+/* ── Panel ── */
+.panel {
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+}
+.panel-title {
+  font-size: 11px;
+  color: var(--gold);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  font-weight: 500;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.panel-title::after {
+  content: '';
+  flex: 1;
+  height: 0.5px;
+  background: var(--border2);
+}
+
+/* ── Form elements ── */
+.field-group { margin-bottom: 16px; }
+.field-label {
+  font-size: 11px;
+  color: var(--text2);
+  margin-bottom: 5px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.field-label span { color: var(--gold); font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+input[type="text"], input[type="number"], select {
+  width: 100%;
+  background: var(--bg);
+  border: 0.5px solid var(--border2);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 12px;
+  font-family: inherit;
+  padding: 8px 10px;
+  outline: none;
+  transition: border-color .15s;
+}
+input[type="text"]:focus, input[type="number"]:focus, select:focus {
+  border-color: var(--gold);
+}
+select option { background: var(--surface); }
+
+/* ── Slider section ── */
+.dim-section {
+  background: var(--surface2);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin-bottom: 10px;
+}
+.dim-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.dim-name {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.dim-max { font-size: 10px; color: var(--text3); }
+.dim-score {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 16px;
+  font-weight: 500;
+  min-width: 36px;
+  text-align: right;
+}
+.slider-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.slider-label { font-size: 10px; color: var(--text3); width: 130px; flex-shrink: 0; }
+input[type="range"] {
+  flex: 1;
+  -webkit-appearance: none;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--border2);
+  outline: none;
+  cursor: pointer;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--gold);
+  cursor: pointer;
+  transition: transform .1s;
+}
+input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+.slider-val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--gold);
+  width: 22px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* ── Score panel ── */
+.score-big {
+  text-align: center;
+  padding: 20px 0 16px;
+  margin-bottom: 16px;
+  border-bottom: 0.5px solid var(--border);
+}
+.score-num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 52px;
+  font-weight: 500;
+  line-height: 1;
+  margin-bottom: 4px;
+  transition: color .3s;
+}
+.score-label { font-size: 11px; color: var(--text3); }
+
+.rating-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  margin: 8px 0;
+  border: 0.5px solid;
+  transition: all .3s;
+}
+
+/* breakdown bars */
+.breakdown { margin-top: 12px; }
+.bk-row { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
+.bk-label { font-size: 10px; color: var(--text3); width: 80px; flex-shrink: 0; }
+.bk-bar-wrap { flex: 1; height: 4px; background: var(--border); border-radius: 2px; }
+.bk-bar { height: 4px; border-radius: 2px; background: var(--gold); transition: width .4s; }
+.bk-val { font-size: 10px; font-family: 'JetBrains Mono', monospace; color: var(--text2); width: 30px; text-align: right; }
+
+/* ── Recommendation ── */
+.rec-box {
+  background: var(--surface2);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  margin-top: 12px;
+  font-size: 11px;
+  color: var(--text2);
+  line-height: 1.7;
+  border: 0.5px solid var(--border);
+}
+.rec-box strong { color: var(--text); font-weight: 500; }
+.etf-pills { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+.etf-pill {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--blue-dim);
+  color: var(--blue);
+  border: 0.5px solid rgba(91,143,232,0.3);
+}
+
+/* ── History table ── */
+.history-section { margin-top: 16px; }
+.hist-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+.hist-table th {
+  font-size: 10px;
+  color: var(--text3);
+  text-align: left;
+  padding: 6px 8px;
+  border-bottom: 0.5px solid var(--border2);
+  font-weight: 400;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.hist-table td {
+  padding: 9px 8px;
+  border-bottom: 0.5px solid var(--border);
+  font-size: 11px;
+  color: var(--text2);
+  vertical-align: middle;
+}
+.hist-table tr:last-child td { border-bottom: none; }
+.hist-table tr:hover td { background: rgba(255,255,255,.02); }
+.hist-name { color: var(--text); font-weight: 500; }
+.hist-code { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text3); }
+.hist-score { font-family: 'JetBrains Mono', monospace; font-weight: 500; }
+.mini-badge {
+  font-size: 9px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-weight: 500;
+  border: 0.5px solid;
+}
+.del-btn {
+  background: none;
+  border: none;
+  color: var(--text3);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 3px;
+  transition: color .15s;
+}
+.del-btn:hover { color: var(--red); }
+
+.empty-state {
+  text-align: center;
+  padding: 24px;
+  color: var(--text3);
+  font-size: 12px;
+}
+
+/* ── Sector selector ── */
+.sector-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-bottom: 12px; }
+.sector-btn {
+  padding: 7px 4px;
+  border-radius: var(--radius-sm);
+  border: 0.5px solid var(--border2);
+  background: var(--bg);
+  color: var(--text2);
+  font-size: 11px;
+  cursor: pointer;
+  text-align: center;
+  transition: all .15s;
+  line-height: 1.4;
+}
+.sector-btn:hover { border-color: var(--gold); color: var(--text); }
+.sector-btn.active { background: var(--gold-dim); border-color: var(--gold); color: var(--gold); }
+
+/* ── Notice ── */
+.notice {
+  background: rgba(201,168,76,0.06);
+  border: 0.5px solid rgba(201,168,76,0.2);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font-size: 10px;
+  color: var(--text3);
+  margin-top: 12px;
+  line-height: 1.7;
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-left">
+      <h1>QFII · ETF 量化评分系统</h1>
+      <p>Quantitative Scoring · QFII Holdings Analysis · 2026</p>
+    </div>
+    <div class="header-right">
+      <button class="btn" onclick="clearForm()">清空表单</button>
+      <button class="btn btn-gold" onclick="saveRecord()">保存记录 ＋</button>
+    </div>
+  </div>
+
+  <div class="layout">
+
+    <!-- Left: Input -->
+    <div>
+      <div class="panel" style="margin-bottom:16px;">
+        <div class="panel-title">基本信息</div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+          <div class="field-group" style="margin:0">
+            <div class="field-label">个股名称</div>
+            <input type="text" id="stockName" placeholder="如：金海通">
+          </div>
+          <div class="field-group" style="margin:0">
+            <div class="field-label">股票代码</div>
+            <input type="text" id="stockCode" placeholder="如：603061">
+          </div>
+        </div>
+
+        <div class="field-group" style="margin-bottom:12px;">
+          <div class="field-label">所属行业</div>
+          <div class="sector-grid">
+            <div class="sector-btn active" onclick="selectSector(this,'医药生物')">🏥<br>医药生物</div>
+            <div class="sector-btn" onclick="selectSector(this,'机械设备')">⚙️<br>机械设备</div>
+            <div class="sector-btn" onclick="selectSector(this,'电子')">💡<br>电子</div>
+            <div class="sector-btn" onclick="selectSector(this,'电力设备')">⚡<br>电力设备</div>
+            <div class="sector-btn" onclick="selectSector(this,'基础化工')">🧪<br>基础化工</div>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
+          <div class="field-group" style="margin:0">
+            <div class="field-label">评分日期</div>
+            <input type="text" id="scoreDate" placeholder="2026-03-30">
+          </div>
+          <div class="field-group" style="margin:0">
+            <div class="field-label">对应ETF代码</div>
+            <input type="text" id="etfCode" placeholder="如：516960">
+          </div>
+          <div class="field-group" style="margin:0">
+            <div class="field-label">备注</div>
+            <input type="text" id="note" placeholder="可选">
+          </div>
+        </div>
+      </div>
+
+      <!-- Dim 1 -->
+      <div class="dim-section">
+        <div class="dim-header">
+          <div class="dim-name">
+            <span style="color:var(--gold);font-family:'JetBrains Mono',monospace;font-size:11px">①</span>
+            QFII 持股信号
+            <span class="dim-max">满分 30</span>
+          </div>
+          <div class="dim-score" id="d1score" style="color:var(--gold)">0</div>
+        </div>
+        <div class="slider-row">
+          <div class="slider-label">持股比例（%）</div>
+          <input type="range" id="d1a" min="0" max="10" step="0.01" value="0" oninput="calcD1()">
+          <div class="slider-val" id="d1aval">0</div>
+        </div>
+        <div class="slider-row">
+          <div class="slider-label">季度新进/加仓</div>
+          <input type="range" id="d1b" min="0" max="10" step="1" value="0" oninput="calcD1()">
+          <div class="slider-val" id="d1bval">0</div>
+        </div>
+        <div class="slider-row">
+          <div class="slider-label">多家QFII同步布局</div>
+          <input type="range" id="d1c" min="0" max="10" step="1" value="0" oninput="calcD1()">
+          <div class="slider-val" id="d1cval">0</div>
+        </div>
+        <div style="font-size:10px;color:var(--text3);margin-top:6px;">
+          持股比例参考：≥5% → 10分；3~5% → 7分；1~3% → 4分；&lt;1% → 1分
+        </div>
+      </div>
+
+      <!-- Dim 2 -->
+      <div class="dim-section">
+        <div class="dim-header">
+          <div class="dim-name">
+            <span style="color:var(--gold);font-family:'JetBrains Mono',monospace;font-size:11px">②</span>
+            业绩基本面
+            <span class="dim-max">满分 25</span>
+          </div>
+          <div class="dim-score" id="d2score" style="color:var(--gold)">0</div>
+        </div>
+        <div class="slider-row">
+          <div class="slider-label">净利润同比增速</div>
+          <input type="range" id="d2a" min="0" max="15" step="1" value="0" oninput="calcD2()">
+          <div class="slider-val" id="d2aval">0</div>
+        </div>
+        <div class="slider-row">
+          <div class="slider-label">行业景气度加成</div>
+          <input type="range" id="d2b" min="0" max="10" step="1" value="0" oninput="calcD2()">
+          <div class="slider-val" id="d2bval">0</div>
+        </div>
+        <div style="font-size:10px;color:var(--text3);margin-top:6px;">
+          增速参考：≥50% → 15分；0~50% → 8分；负增长 → 0分 ｜ 景气度：高景气赛道→10分
+        </div>
+      </div>
+
+      <!-- Dim 3 -->
+      <div class="dim-section">
+        <div class="dim-header">
+          <div class="dim-name">
+            <span style="color:var(--gold);font-family:'JetBrains Mono',monospace;font-size:11px">③</span>
+            ETF 覆盖度
+            <span class="dim-max">满分 20</span>
+          </div>
+          <div class="dim-score" id="d3score" style="color:var(--gold)">0</div>
+        </div>
+        <div class="slider-row">
+          <div class="slider-label">主流ETF前十权重</div>
+          <input type="range" id="d3a" min="0" max="10" step="1" value="0" oninput="calcD3()">
+          <div class="slider-val" id="d3aval">0</div>
+        </div>
+        <div class="slider-row">
+          <div class="slider-label">行业ETF资金净流入</div>
+          <input type="range" id="d3b" min="0" max="10" step="1" value="0" oninput="calcD3()">
+          <div class="slider-val" id="d3bval">0</div>
+        </div>
+      </div>
+
+      <!-- Dim 4 -->
+      <div class="dim-section">
+        <div class="dim-header">
+          <div class="dim-name">
+            <span style="color:var(--gold);font-family:'JetBrains Mono',monospace;font-size:11px">④</span>
+            价格动量
+            <span class="dim-max">满分 15</span>
+          </div>
+          <div class="dim-score" id="d4score" style="color:var(--gold)">0</div>
+        </div>
+        <div class="slider-row">
+          <div class="slider-label">2026年以来涨幅</div>
+          <input type="range" id="d4a" min="0" max="10" step="1" value="0" oninput="calcD4()">
+          <div class="slider-val" id="d4aval">0</div>
+        </div>
+        <div class="slider-row">
+          <div class="slider-label">未超历史高点加成</div>
+          <input type="range" id="d4b" min="0" max="5" step="1" value="0" oninput="calcD4()">
+          <div class="slider-val" id="d4bval">0</div>
+        </div>
+        <div style="font-size:10px;color:var(--text3);margin-top:6px;">
+          涨幅参考：≥50% → 10分；10~50% → 6分；&lt;10%或负 → 2分
+        </div>
+      </div>
+
+      <!-- Dim 5 -->
+      <div class="dim-section">
+        <div class="dim-header">
+          <div class="dim-name">
+            <span style="color:var(--gold);font-family:'JetBrains Mono',monospace;font-size:11px">⑤</span>
+            资金流向验证
+            <span class="dim-max">满分 10</span>
+          </div>
+          <div class="dim-score" id="d5score" style="color:var(--gold)">0</div>
+        </div>
+        <div class="slider-row">
+          <div class="slider-label">北向/中东同步增持</div>
+          <input type="range" id="d5a" min="0" max="5" step="1" value="0" oninput="calcD5()">
+          <div class="slider-val" id="d5aval">0</div>
+        </div>
+        <div class="slider-row">
+          <div class="slider-label">ETF净流入规模靠前</div>
+          <input type="range" id="d5b" min="0" max="3" step="1" value="0" oninput="calcD5()">
+          <div class="slider-val" id="d5bval">0</div>
+        </div>
+        <div class="slider-row">
+          <div class="slider-label">龙虎榜机构席位</div>
+          <input type="range" id="d5c" min="0" max="2" step="1" value="0" oninput="calcD5()">
+          <div class="slider-val" id="d5cval">0</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Score -->
+    <div>
+      <div class="panel" style="position:sticky;top:20px;">
+        <div class="panel-title">实时评分</div>
+
+        <div class="score-big">
+          <div class="score-num" id="totalScore">0</div>
+          <div class="score-label">满分 100 分</div>
+          <div style="margin-top:10px;">
+            <div class="rating-badge" id="ratingBadge" style="background:var(--surface2);border-color:var(--border2);color:var(--text3)">
+              — 请录入数据
+            </div>
+          </div>
+        </div>
+
+        <!-- Breakdown -->
+        <div class="breakdown">
+          <div class="bk-row">
+            <div class="bk-label">① QFII信号</div>
+            <div class="bk-bar-wrap"><div class="bk-bar" id="bk1" style="width:0%;background:var(--gold)"></div></div>
+            <div class="bk-val" id="bk1v">0/30</div>
+          </div>
+          <div class="bk-row">
+            <div class="bk-label">② 业绩基本面</div>
+            <div class="bk-bar-wrap"><div class="bk-bar" id="bk2" style="width:0%;background:var(--green)"></div></div>
+            <div class="bk-val" id="bk2v">0/25</div>
+          </div>
+          <div class="bk-row">
+            <div class="bk-label">③ ETF覆盖度</div>
+            <div class="bk-bar-wrap"><div class="bk-bar" id="bk3" style="width:0%;background:var(--blue)"></div></div>
+            <div class="bk-val" id="bk3v">0/20</div>
+          </div>
+          <div class="bk-row">
+            <div class="bk-label">④ 价格动量</div>
+            <div class="bk-bar-wrap"><div class="bk-bar" id="bk4" style="width:0%;background:var(--amber)"></div></div>
+            <div class="bk-val" id="bk4v">0/15</div>
+          </div>
+          <div class="bk-row">
+            <div class="bk-label">⑤ 资金验证</div>
+            <div class="bk-bar-wrap"><div class="bk-bar" id="bk5" style="width:0%;background:var(--red)"></div></div>
+            <div class="bk-val" id="bk5v">0/10</div>
+          </div>
+        </div>
+
+        <!-- Recommendation -->
+        <div class="rec-box" id="recBox">
+          <strong>录入数据后自动生成建议</strong>
+          <div style="margin-top:6px;color:var(--text3)">包含：配置策略 · 个股vs ETF建议 · 风险提示</div>
+        </div>
+
+        <div class="notice">
+          ⚠ 评分系统仅供研究参考，不构成投资建议。每季报披露后建议重新评分。
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- History -->
+  <div class="history-section">
+    <div class="panel">
+      <div class="panel-title">评分记录</div>
+      <div id="histContent">
+        <div class="empty-state">暂无记录 · 录入数据后点击「保存记录」</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// State
+let sector = '医药生物';
+let scores = { d1: 0, d2: 0, d3: 0, d4: 0, d5: 0 };
+let records = JSON.parse(localStorage.getItem('qfii_records') || '[]');
+
+// Today's date
+document.getElementById('scoreDate').value = new Date().toISOString().slice(0, 10);
+
+// Sector ETF map
+const sectorEtf = {
+  '医药生物': ['512010', '159992', '159883'],
+  '机械设备': ['516960', '562500', '159516'],
+  '电子':    ['159995', '588200', '159735'],
+  '电力设备': ['159326', '516160', '159896'],
+  '基础化工': ['516020', '515220', '159609'],
+};
+
+function selectSector(el, name) {
+  document.querySelectorAll('.sector-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  sector = name;
+  const etfList = sectorEtf[name] || [];
+  document.getElementById('etfCode').value = etfList[0] || '';
+  updateRec();
+}
+
+function sv(id) { return parseFloat(document.getElementById(id).value) || 0; }
+function su(id, val) {
+  document.getElementById(id + 'val').textContent = typeof val === 'number' ? val : sv(id);
+}
+
+function calcD1() {
+  su('d1a', sv('d1a').toFixed(2));
+  // Map holding % to score
+  const pct = sv('d1a');
+  let pctScore = pct >= 5 ? 10 : pct >= 3 ? 7 : pct >= 1 ? 4 : Math.round(pct * 1);
+  pctScore = Math.min(10, pctScore);
+  const add = sv('d1b') + sv('d1c');
+  su('d1b'); su('d1c');
+  scores.d1 = Math.min(30, pctScore + sv('d1b') + sv('d1c'));
+  document.getElementById('d1score').textContent = scores.d1;
+  updateTotal();
+}
+function calcD2() { su('d2a'); su('d2b'); scores.d2 = Math.min(25, sv('d2a') + sv('d2b')); document.getElementById('d2score').textContent = scores.d2; updateTotal(); }
+function calcD3() { su('d3a'); su('d3b'); scores.d3 = Math.min(20, sv('d3a') + sv('d3b')); document.getElementById('d3score').textContent = scores.d3; updateTotal(); }
+function calcD4() { su('d4a'); su('d4b'); scores.d4 = Math.min(15, sv('d4a') + sv('d4b')); document.getElementById('d4score').textContent = scores.d4; updateTotal(); }
+function calcD5() { su('d5a'); su('d5b'); su('d5c'); scores.d5 = Math.min(10, sv('d5a') + sv('d5b') + sv('d5c')); document.getElementById('d5score').textContent = scores.d5; updateTotal(); }
+
+function updateTotal() {
+  const total = scores.d1 + scores.d2 + scores.d3 + scores.d4 + scores.d5;
+  document.getElementById('totalScore').textContent = total;
+
+  // Color
+  let col = '#5a5854';
+  if (total >= 85) col = '#e05252';
+  else if (total >= 75) col = '#4caf7d';
+  else if (total >= 60) col = '#d4883a';
+  else if (total >= 40) col = '#9b9890';
+  document.getElementById('totalScore').style.color = col;
+
+  // Rating badge
+  const badge = document.getElementById('ratingBadge');
+  let rText, rBg, rBorder, rColor;
+  if (total >= 85) { rText = 'A＋　强烈推荐买入'; rBg = 'var(--red-dim)'; rBorder = 'var(--red)'; rColor = 'var(--red)'; }
+  else if (total >= 75) { rText = 'A　推荐买入'; rBg = 'var(--green-dim)'; rBorder = 'var(--green)'; rColor = 'var(--green)'; }
+  else if (total >= 60) { rText = 'B　谨慎观察'; rBg = 'var(--amber-dim)'; rBorder = 'var(--amber)'; rColor = 'var(--amber)'; }
+  else if (total >= 1) { rText = 'C　持有/回避'; rBg = 'var(--surface2)'; rBorder = 'var(--border2)'; rColor = 'var(--text3)'; }
+  else { rText = '— 请录入数据'; rBg = 'var(--surface2)'; rBorder = 'var(--border2)'; rColor = 'var(--text3)'; }
+  badge.textContent = rText;
+  badge.style.background = rBg;
+  badge.style.borderColor = rBorder;
+  badge.style.color = rColor;
+
+  // Breakdown bars
+  document.getElementById('bk1').style.width = (scores.d1 / 30 * 100) + '%';
+  document.getElementById('bk2').style.width = (scores.d2 / 25 * 100) + '%';
+  document.getElementById('bk3').style.width = (scores.d3 / 20 * 100) + '%';
+  document.getElementById('bk4').style.width = (scores.d4 / 15 * 100) + '%';
+  document.getElementById('bk5').style.width = (scores.d5 / 10 * 100) + '%';
+  document.getElementById('bk1v').textContent = scores.d1 + '/30';
+  document.getElementById('bk2v').textContent = scores.d2 + '/25';
+  document.getElementById('bk3v').textContent = scores.d3 + '/20';
+  document.getElementById('bk4v').textContent = scores.d4 + '/15';
+  document.getElementById('bk5v').textContent = scores.d5 + '/10';
+
+  updateRec(total);
+}
+
+function updateRec(total) {
+  const t = total || (scores.d1 + scores.d2 + scores.d3 + scores.d4 + scores.d5);
+  const etfs = sectorEtf[sector] || [];
+  const etfPills = etfs.map(e => `<span class="etf-pill">${e}</span>`).join('');
+  let strategy = '';
+  let risk = '';
+
+  if (t >= 85) {
+    strategy = `<strong>策略建议：</strong>个股与行业ETF双仓位布局。个股占卫星仓位60~70%，ETF作为核心底仓。QFII信号强烈，可积极参与。`;
+    risk = `关注季报业绩验证节点（4月/8月），持股比例若环比下降需及时减仓。`;
+  } else if (t >= 75) {
+    strategy = `<strong>策略建议：</strong>以行业ETF为主（核心仓位70%），个股为辅（卫星30%）。信号良好，稳健建仓。`;
+    risk = `动量或资金维度有所欠缺，建议分批介入，控制单标的集中度。`;
+  } else if (t >= 60) {
+    strategy = `<strong>策略建议：</strong>优先配置对应行业ETF，分散个股风险。个股仅作小比例试仓。`;
+    risk = `业绩或QFII信号存在不足，建议等待更多验证信号后加仓。`;
+  } else if (t >= 1) {
+    strategy = `<strong>策略建议：</strong>暂不建议配置个股，可小仓位持有行业ETF跟踪行业动态。`;
+    risk = `综合信号偏弱，以观察为主，下季报后重新评估。`;
+  } else {
+    document.getElementById('recBox').innerHTML = `<strong>录入数据后自动生成建议</strong><div style="margin-top:6px;color:var(--text3)">包含：配置策略 · 个股vs ETF建议 · 风险提示</div>`;
+    return;
+  }
+
+  document.getElementById('recBox').innerHTML = `
+    ${strategy}
+    <div style="margin-top:6px;color:var(--text3)">${risk}</div>
+    <div style="margin-top:8px;font-size:10px;color:var(--text3)">对应 ${sector} ETF 参考标的：</div>
+    <div class="etf-pills">${etfPills}</div>
+  `;
+}
+
+function saveRecord() {
+  const name = document.getElementById('stockName').value.trim() || '未命名';
+  const code = document.getElementById('stockCode').value.trim() || '—';
+  const etf  = document.getElementById('etfCode').value.trim() || '—';
+  const date = document.getElementById('scoreDate').value || '—';
+  const note = document.getElementById('note').value.trim();
+  const total = scores.d1 + scores.d2 + scores.d3 + scores.d4 + scores.d5;
+  const rec = { name, code, sector, etf, date, note, total, scores: {...scores}, id: Date.now() };
+  records.unshift(rec);
+  localStorage.setItem('qfii_records', JSON.stringify(records));
+  renderHistory();
+}
+
+function deleteRecord(id) {
+  records = records.filter(r => r.id !== id);
+  localStorage.setItem('qfii_records', JSON.stringify(records));
+  renderHistory();
+}
+
+function ratingColor(t) {
+  if (t >= 85) return { bg: 'var(--red-dim)', border: 'var(--red)', color: 'var(--red)', label: 'A+' };
+  if (t >= 75) return { bg: 'var(--green-dim)', border: 'var(--green)', color: 'var(--green)', label: 'A' };
+  if (t >= 60) return { bg: 'var(--amber-dim)', border: 'var(--amber)', color: 'var(--amber)', label: 'B' };
+  return { bg: 'var(--surface2)', border: 'var(--border2)', color: 'var(--text3)', label: 'C' };
+}
+
+function renderHistory() {
+  const el = document.getElementById('histContent');
+  if (!records.length) {
+    el.innerHTML = '<div class="empty-state">暂无记录 · 录入数据后点击「保存记录」</div>';
+    return;
+  }
+  let rows = records.map(r => {
+    const rc = ratingColor(r.total);
+    return `<tr>
+      <td><div class="hist-name">${r.name}</div><div class="hist-code">${r.code}</div></td>
+      <td>${r.sector}</td>
+      <td>${r.date}</td>
+      <td class="hist-score" style="color:${rc.color}">${r.total}</td>
+      <td><span class="mini-badge" style="background:${rc.bg};border-color:${rc.border};color:${rc.color}">${rc.label}</span></td>
+      <td><span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3)">${r.etf}</span></td>
+      <td style="color:var(--text3);font-size:10px">${r.scores.d1}·${r.scores.d2}·${r.scores.d3}·${r.scores.d4}·${r.scores.d5}</td>
+      <td style="color:var(--text3)">${r.note || '—'}</td>
+      <td><button class="del-btn" onclick="deleteRecord(${r.id})">✕</button></td>
+    </tr>`;
+  }).join('');
+  el.innerHTML = `<table class="hist-table">
+    <thead><tr>
+      <th>个股</th><th>行业</th><th>日期</th><th>总分</th><th>评级</th>
+      <th>ETF</th><th>各维度①②③④⑤</th><th>备注</th><th></th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
+function clearForm() {
+  ['stockName','stockCode','etfCode','note'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('scoreDate').value = new Date().toISOString().slice(0, 10);
+  ['d1a','d1b','d1c','d2a','d2b','d3a','d3b','d4a','d4b','d5a','d5b','d5c'].forEach(id => {
+    document.getElementById(id).value = 0;
+  });
+  ['d1aval','d1bval','d1cval','d2aval','d2bval','d3aval','d3bval','d4aval','d4bval','d5aval','d5bval','d5cval'].forEach(id => {
+    document.getElementById(id).textContent = 0;
+  });
+  scores = { d1: 0, d2: 0, d3: 0, d4: 0, d5: 0 };
+  ['d1score','d2score','d3score','d4score','d5score'].forEach(id => document.getElementById(id).textContent = 0);
+  updateTotal();
+}
+
+// Init
+renderHistory();
+</script>
+</body>
+</html>
